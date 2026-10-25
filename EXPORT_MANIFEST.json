@@ -1,0 +1,205 @@
+{
+  "format": 1,
+  "curated": "2026-10-25",
+  "source": "AI Research Workbench v2, local installation dated 2026-10-15; current handoff dated 2026-10-24",
+  "selection": "Explicit listed files only; no complete-workspace copy. Notebook previews generated from fresh default-off execution using basic nbconvert markup, with full tool notices. Public bibliography: two selected references only.",
+  "license": "Original source license unspecified. Generated preview tool BSD notices retained. No media/model/paper license conveyed.",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 69,
+      "sha256": "36c62fa88d7bba0847aa6c88eb2595605569927177cffbdbce468568431ab778",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "PROVENANCE.md",
+      "bytes": 2253,
+      "sha256": "d71d5c286548bb62a586dd5d47d83760e0f77abb95a24cf98a4f905ee7b9eb35",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "PostTraining/README.md",
+      "bytes": 901,
+      "sha256": "825fd1283f256860519768af71f24bbeb5aecf8eb3a8600b2dc940edb578cef5",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "PostTraining/experiments/__init__.py",
+      "bytes": 75,
+      "sha256": "77f1985c627c848579477d30712a9b2777dcbf962b128a35aa56ae05db2d32ef",
+      "source": "PostTraining/experiments/__init__.py",
+      "sourceSha256": "77f1985c627c848579477d30712a9b2777dcbf962b128a35aa56ae05db2d32ef",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/experiments/contracts.py",
+      "bytes": 6974,
+      "sha256": "ed1e00aca474a5a0342f65573da7c5824240001a4d2e6c2807c5dded769138e5",
+      "source": "PostTraining/experiments/contracts.py",
+      "sourceSha256": "ed1e00aca474a5a0342f65573da7c5824240001a4d2e6c2807c5dded769138e5",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/experiments/data/smoke_train.jsonl",
+      "bytes": 967,
+      "sha256": "72aa79a86e31484c04897ccf762098c3df0ed44ccde1b191e9e6dda9ec8e146d",
+      "source": "PostTraining/experiments/data/smoke_train.jsonl",
+      "sourceSha256": "72aa79a86e31484c04897ccf762098c3df0ed44ccde1b191e9e6dda9ec8e146d",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/experiments/data/smoke_val.jsonl",
+      "bytes": 324,
+      "sha256": "5bc3c6c731bb6a5589257fd1a210fc1da9691ea742e432f9637b2da236f35f91",
+      "source": "PostTraining/experiments/data/smoke_val.jsonl",
+      "sourceSha256": "5bc3c6c731bb6a5589257fd1a210fc1da9691ea742e432f9637b2da236f35f91",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/experiments/preflight.py",
+      "bytes": 2686,
+      "sha256": "7c21113de7faafd332edbe07ca20ddf5b3b942249ae2e2f0cfd7b824544df8b6",
+      "source": "PostTraining/experiments/preflight.py",
+      "sourceSha256": "7c21113de7faafd332edbe07ca20ddf5b3b942249ae2e2f0cfd7b824544df8b6",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/experiments/recovery.py",
+      "bytes": 9012,
+      "sha256": "69893cb9777be0642d568a6b3c9728c54eb388d0ed95b07f9ce03bd495989242",
+      "source": "PostTraining/experiments/recovery.py",
+      "sourceSha256": "69893cb9777be0642d568a6b3c9728c54eb388d0ed95b07f9ce03bd495989242",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/experiments/requirements-colab.txt",
+      "bytes": 391,
+      "sha256": "a990c4af7c9e69e8fc7d8488e43992a9b0b34cf565a16875bf7e01562a7932f6",
+      "source": "PostTraining/experiments/requirements-colab.txt",
+      "sourceSha256": "a990c4af7c9e69e8fc7d8488e43992a9b0b34cf565a16875bf7e01562a7932f6",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/experiments/run_pair.py",
+      "bytes": 19345,
+      "sha256": "d3fe6fa90e5eec708ed5ff868654ccefe25c3231b249650c0609528a61e2724f",
+      "source": "PostTraining/experiments/run_pair.py",
+      "sourceSha256": "d3fe6fa90e5eec708ed5ff868654ccefe25c3231b249650c0609528a61e2724f",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/experiments/torch_losses.py",
+      "bytes": 1202,
+      "sha256": "02961fc78a5baade3011c04d53282571d3b6e0f8ca8eeca2e347e2509d95dadc",
+      "source": "PostTraining/experiments/torch_losses.py",
+      "sourceSha256": "02961fc78a5baade3011c04d53282571d3b6e0f8ca8eeca2e347e2509d95dadc",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/literature/index.json",
+      "bytes": 1347,
+      "sha256": "bc0339791398021cfea0ed2ae84485fd7fabfb226d5c8095714fb40a70d96c56",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "PostTraining/notebooks/00_cpu_checks.ipynb",
+      "bytes": 14381,
+      "sha256": "62dfcf3f69463a25c086041619494522aa5d6555c6e7b5c383273a9852911dd7",
+      "source": "PostTraining/notebooks/00_cpu_checks.ipynb",
+      "sourceSha256": "6f84a62696f5fcbd7564d00ae3028ee4dd2c27dccabbac96a7749e0b2dbe95ba",
+      "change": "Cleared outputs and machine-specific acceptance metadata/text; portable paths and hardware-neutral introduction; code behavior/default-off flags preserved."
+    },
+    {
+      "path": "PostTraining/notebooks/01_colab_sft_dft.ipynb",
+      "bytes": 17948,
+      "sha256": "7b0cbedd66a17a3bb450192ba289f7106cc6abb7dc449ecfa16dc10b3232c4ed",
+      "source": "PostTraining/notebooks/01_colab_sft_dft.ipynb",
+      "sourceSha256": "de776395836f786613a3cde3177bacdbd1395528f5b860725c2596fa60cb6925",
+      "change": "Cleared outputs and machine-specific acceptance metadata/text; portable paths and hardware-neutral introduction; code behavior/default-off flags preserved."
+    },
+    {
+      "path": "PostTraining/notebooks/previews/00_cpu_checks.html",
+      "bytes": 29819,
+      "sha256": "e1aad85695a120480307a78a7b09b7d0b197d7c7b1572ac64b7fabe6441e5687",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "PostTraining/notebooks/previews/01_colab_sft_dft.html",
+      "bytes": 38650,
+      "sha256": "b0ae44785770df15d439f6e07118da8640341b78c8a0002cf397a532d1600e9d",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "PostTraining/templates/experiment_record.json",
+      "bytes": 870,
+      "sha256": "268854b70b93a03c8b80a300f1b20eda0756e56c44b0e57fcff58480d14f23be",
+      "source": "PostTraining/templates/experiment_record.json",
+      "sourceSha256": "268854b70b93a03c8b80a300f1b20eda0756e56c44b0e57fcff58480d14f23be",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/tests/__init__.py",
+      "bytes": 79,
+      "sha256": "b831e060a8856e79f427a83ac98bb88d5661ceac9faccbe4165ac432bd9ed711",
+      "source": "PostTraining/tests/__init__.py",
+      "sourceSha256": "b831e060a8856e79f427a83ac98bb88d5661ceac9faccbe4165ac432bd9ed711",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/tests/test_contracts.py",
+      "bytes": 6312,
+      "sha256": "b2e2f3c7a7684ca94aa685a966dceec1b40d9517933fa53605a5e74a5b26e438",
+      "source": "PostTraining/tests/test_contracts.py",
+      "sourceSha256": "b2e2f3c7a7684ca94aa685a966dceec1b40d9517933fa53605a5e74a5b26e438",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining/tests/test_recovery.py",
+      "bytes": 3810,
+      "sha256": "1cabb90e65852353862d91894d549106b5600b1aa0480abc930a53629855394c",
+      "source": "PostTraining/tests/test_recovery.py",
+      "sourceSha256": "1cabb90e65852353862d91894d549106b5600b1aa0480abc930a53629855394c",
+      "change": "unchanged"
+    },
+    {
+      "path": "PostTraining_Colab_v2.zip",
+      "bytes": 32647,
+      "sha256": "eff768a725cff9ab1f7c5690d89f65f12a2df45c5a8d69ed4bc78b6d56ba1d44",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3640,
+      "sha256": "807040c8370be2cb1516f16793f30eab069e03358994c96edf5f4830529d58f5",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "bytes": 3242,
+      "sha256": "14e8268c38351858a575f081f7da107ef41936deaae13e665dac2c1712b5b89b",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "reading_hub.html",
+      "bytes": 8981,
+      "sha256": "fafce2973c8aaf28a005cff4a13d31b80017fcea2043e41b6279c294f97dfe1d",
+      "source": "curated/generated package material; see PROVENANCE.md"
+    },
+    {
+      "path": "tests/test_research_files.py",
+      "bytes": 9089,
+      "sha256": "8757bee5e1862a31a46989589a121d4b4f3c0ab0494f24baf98ebb9c3255cff6",
+      "source": "tests/test_research_files.py",
+      "sourceSha256": "8757bee5e1862a31a46989589a121d4b4f3c0ab0494f24baf98ebb9c3255cff6",
+      "change": "unchanged"
+    },
+    {
+      "path": "tools/research_files.py",
+      "bytes": 18313,
+      "sha256": "c67d6cb822c2a7f1fe668d49ec12de464fe09f0569793d609d485e19f1aa8f00",
+      "source": "tools/research_files.py",
+      "sourceSha256": "c67d6cb822c2a7f1fe668d49ec12de464fe09f0569793d609d485e19f1aa8f00",
+      "change": "unchanged"
+    }
+  ]
+}

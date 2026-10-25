@@ -1,0 +1,334 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>00_cpu_checks</title><style>body{font:16px/1.65 system-ui,sans-serif;color:#243533;background:#f3f5ef;max-width:900px;margin:32px auto;padding:0 20px}pre{overflow:auto;background:#fffefb;padding:16px;border:1px solid #d9e1d9;border-radius:8px}h1,h2{line-height:1.3}a{color:#176655}.prompt{font-size:12px;color:#5c6b66}.cell{margin-bottom:24px}table{border-collapse:collapse}td,th{padding:6px;border:1px solid #d9e1d9}</style></head><body><a href="../../../reading_hub.html">Back to workbench</a><div class="cell border-box-sizing text_cell rendered" id="cell-id=84456588"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="00-%C2%B7-%E5%85%88%E7%A1%AE%E8%AE%A4%E6%95%B0%E6%8D%AE%E4%B8%8E%E6%8D%9F%E5%A4%B1%E6%B2%A1%E6%9C%89%E7%AE%97%E9%94%99">00 · 先确认数据与损失没有算错<a class="anchor-link" href="#00-%C2%B7-%E5%85%88%E7%A1%AE%E8%AE%A4%E6%95%B0%E6%8D%AE%E4%B8%8E%E6%8D%9F%E5%A4%B1%E6%B2%A1%E6%9C%89%E7%AE%97%E9%94%99">¶</a></h1><p>这本 notebook 是<strong>基础设施自检与机制导览</strong>。它不下载模型、不训练。请在 Mac 或 Colab 的 CPU runtime 运行；分配 GPU runtime 后，即使代码只用 CPU，也可能消耗额度；输出来自合成样本和小数组，不能说明 DFT 的模型效果。</p>
+<p>我们先检查三个容易悄悄改变实验含义的地方：哪些 token 被学习、模型在预测哪一个 token、累计梯度时怎样归一化。接着才有资格做一次真实模型 smoke run。</p>
+<p><strong>已执行状态：</strong> 此交付保存了实际 CPU 输出。真实 PyTorch 梯度测试是否执行，请以末尾测试结果为准；没有 GPU 训练结果。</p>
+<h2 id="1.-%E6%89%BE%E5%88%B0%E5%AE%8C%E6%95%B4%E5%AE%9E%E9%AA%8C%E5%8C%85">1. 找到完整实验包<a class="anchor-link" href="#1.-%E6%89%BE%E5%88%B0%E5%AE%8C%E6%95%B4%E5%AE%9E%E9%AA%8C%E5%8C%85">¶</a></h2><p>从包的根目录或 <code>notebooks/</code> 启动即可。需要 Python、NumPy 和 Jupyter 内核。这里不安装依赖，也不读取个人账号。</p>
+<p>Local Mac validation on 2026-10-15: this copy was executed top-to-bottom in a real Jupyter kernel using the existing .venv-research environment. Dependency installation and training remained disabled. The two PyTorch checks were skipped because torch is absent; 15 other foundation checks passed. No model was downloaded, no GPU training ran, and no research result was produced. The original cloud notebook is preserved in the downloaded package.</p>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered" id="cell-id=2dbd3907">
+<div class="input">
+<div class="prompt input_prompt">In [1]:</div>
+<div class="inner_cell">
+<div class="input_area">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+<span class="c1"># 完整解压基础包；只上传 ipynb 会缺少 experiments/ 和 tests/。</span>
+<span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s1">'/content/PostTraining'</span><span class="p">),</span>
+              <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="s1">'PostTraining'</span><span class="p">]</span>
+<span class="n">ROOT</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">candidates</span> <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="o">/</span><span class="s1">'experiments/contracts.py'</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()),</span> <span class="kc">None</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">ROOT</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s1">'先把完整 PostTraining 文件夹解压至 /content，或将工作目录切到包根目录。'</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ROOT</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'已找到实验包:'</span><span class="p">,</span> <span class="n">ROOT</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">experiments.preflight</span><span class="w"> </span><span class="kn">import</span> <span class="n">environment_report</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">environment_report</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">report</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'python'</span><span class="p">,</span><span class="s1">'packages'</span><span class="p">,</span><span class="s1">'cuda_available'</span><span class="p">,</span><span class="s1">'gpu'</span><span class="p">)},</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="output_wrapper">
+<div class="output">
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>已找到实验包: PostTraining
+{
+  "python": "3.12.13",
+  "packages": {
+    "numpy": "2.5.4",
+    "torch": null,
+    "transformers": null,
+    "peft": null,
+    "accelerate": null,
+    "huggingface-hub": null,
+    "tokenizers": null,
+    "safetensors": null
+  },
+  "cuda_available": false,
+  "gpu": null
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered" id="cell-id=e0ad0ad5"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="2.-%E7%9C%8B%E4%B8%80%E6%9D%A1%E6%98%8E%E7%A1%AE%E6%A0%87%E6%B3%A8%E7%9A%84%E5%90%88%E6%88%90%E6%A0%B7%E6%9C%AC">2. 看一条明确标注的合成样本<a class="anchor-link" href="#2.-%E7%9C%8B%E4%B8%80%E6%9D%A1%E6%98%8E%E7%A1%AE%E6%A0%87%E6%B3%A8%E7%9A%84%E5%90%88%E6%88%90%E6%A0%B7%E6%9C%AC">¶</a></h2><p>内置 12 条训练样本、4 条验证样本只是手写加法题。它们用于检查文件读取、mask、保存与生成是否通畅，不是 GSM8K、不是研究语料，也没有测试集。验证集不进入训练梯度。</p>
+<p>以后换成本地 JSONL，每行保留 <code>id</code>、<code>prompt</code>、<code>completion</code> 三个非空字符串；还需另外记录来源、许可和划分方法。</p>
+<h2 id="3.-%E5%8F%AA%E7%9B%91%E7%9D%A3%E5%9B%9E%E7%AD%94%EF%BC%8C%E5%B9%B6%E6%AD%A3%E7%A1%AE%E7%A7%BB%E5%8A%A8%E4%B8%80%E4%BD%8D">3. 只监督回答，并正确移动一位<a class="anchor-link" href="#3.-%E5%8F%AA%E7%9B%91%E7%9D%A3%E5%9B%9E%E7%AD%94%EF%BC%8C%E5%B9%B6%E6%AD%A3%E7%A1%AE%E7%A7%BB%E5%8A%A8%E4%B8%80%E4%BD%8D">¶</a></h2><p>Base 模型使用固定文本前缀 <code>Question: ...\nAnswer:</code>。训练和生成调用同一个 prompt 编码。回答单独编码后追加一个 EOS；prompt 的标签是 <code>-100</code>，不计入损失。</p>
+<p>下面的字符 tokenizer <strong>只是测试替身，不是 Qwen tokenizer</strong>。它把一个字符映射成一个整数，让边界可以直接检查。真实模型会使用自己的 tokenizer。</p>
+<p>超出 <code>max_length</code> 的样本整条剔除并记录，避免截掉最终答案却仍称它为原任务。本包暂不做 packing 或多样本 padding。</p>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered" id="cell-id=8e76df21">
+<div class="input">
+<div class="prompt input_prompt">In [2]:</div>
+<div class="inner_cell">
+<div class="input_area">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_jsonl</span><span class="p">,</span> <span class="n">ensure_disjoint</span><span class="p">,</span> <span class="n">canonical_hash</span>
+<span class="n">train_rows</span> <span class="o">=</span> <span class="n">load_jsonl</span><span class="p">(</span><span class="n">ROOT</span><span class="o">/</span><span class="s1">'experiments/data/smoke_train.jsonl'</span><span class="p">)</span>
+<span class="n">val_rows</span> <span class="o">=</span> <span class="n">load_jsonl</span><span class="p">(</span><span class="n">ROOT</span><span class="o">/</span><span class="s1">'experiments/data/smoke_val.jsonl'</span><span class="p">)</span>
+<span class="n">ensure_disjoint</span><span class="p">(</span><span class="n">train_rows</span><span class="p">,</span> <span class="n">val_rows</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s1">'train_rows'</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">train_rows</span><span class="p">),</span> <span class="s1">'validation_rows'</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">val_rows</span><span class="p">),</span>
+                 <span class="s1">'train_sha256'</span><span class="p">:</span><span class="n">canonical_hash</span><span class="p">(</span><span class="n">train_rows</span><span class="p">),</span> <span class="s1">'example'</span><span class="p">:</span><span class="n">train_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]},</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">experiments.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">encode_record</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tests.test_contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">CharacterTokenizer</span>
+<span class="n">item</span><span class="p">,</span> <span class="n">issue</span> <span class="o">=</span> <span class="n">encode_record</span><span class="p">(</span><span class="n">train_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">CharacterTokenizer</span><span class="p">())</span>
+<span class="n">prompt_length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s1">'prompt_ids'</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">({</span><span class="s1">'prompt_tokens_masked'</span><span class="p">:</span><span class="n">prompt_length</span><span class="p">,</span> <span class="s1">'response_plus_eos_tokens'</span><span class="p">:</span><span class="n">item</span><span class="p">[</span><span class="s1">'target_tokens'</span><span class="p">],</span>
+       <span class="s1">'labels_at_boundary'</span><span class="p">:</span><span class="n">item</span><span class="p">[</span><span class="s1">'labels'</span><span class="p">][</span><span class="n">prompt_length</span><span class="o">-</span><span class="mi">2</span><span class="p">:</span><span class="n">prompt_length</span><span class="o">+</span><span class="mi">4</span><span class="p">],</span>
+       <span class="s1">'final_label_is_eos'</span><span class="p">:</span><span class="n">item</span><span class="p">[</span><span class="s1">'labels'</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">})</span>
+<span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="o">-</span><span class="mi">100</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s1">'labels'</span><span class="p">][:</span><span class="n">prompt_length</span><span class="p">])</span>
+<span class="k">assert</span> <span class="n">item</span><span class="p">[</span><span class="s1">'labels'</span><span class="p">][</span><span class="n">prompt_length</span><span class="p">:]</span> <span class="o">==</span> <span class="n">item</span><span class="p">[</span><span class="s1">'input_ids'</span><span class="p">][</span><span class="n">prompt_length</span><span class="p">:]</span>
+<span class="c1"># logits[t] 对 labels[t+1]。最后一个 logits 没有后继标签。</span>
+<span class="k">assert</span> <span class="nb">sum</span><span class="p">(</span><span class="n">x</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">100</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s1">'labels'</span><span class="p">][</span><span class="mi">1</span><span class="p">:])</span> <span class="o">==</span> <span class="n">item</span><span class="p">[</span><span class="s1">'target_tokens'</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'mask 与 shift 一致。'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="output_wrapper">
+<div class="output">
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>{
+  "train_rows": 12,
+  "validation_rows": 4,
+  "train_sha256": "71a61677069188f23db76342e80345ddb3f75e25657d1dd0494a670f6758826f",
+  "example": {
+    "id": "synthetic-000",
+    "prompt": "What is 2 + 3?",
+    "completion": "2 + 3 = 5."
+  }
+}
+{'prompt_tokens_masked': 32, 'response_plus_eos_tokens': 12, 'labels_at_boundary': [-100, -100, 33, 51, 33, 44], 'final_label_is_eos': True}
+mask 与 shift 一致。
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered" id="cell-id=bcb7f178"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="4.-%E6%AF%94%E8%BE%83%E4%B8%A4%E4%B8%AA%E6%8D%9F%E5%A4%B1%E7%9A%84%E5%90%AB%E4%B9%89">4. 比较两个损失的含义<a class="anchor-link" href="#4.-%E6%AF%94%E8%BE%83%E4%B8%A4%E4%B8%AA%E6%8D%9F%E5%A4%B1%E7%9A%84%E5%90%AB%E4%B9%89">¶</a></h2><p>对有效回答 token，SFT 使用 <code>-log p(target)</code>；这里的 DFT 对同一项乘 <code>p(target).detach()</code>，再按<strong>有效 token 数量</strong>取平均。<code>detach</code> 表示权重不反向求导。</p>
+<p>两者可以共用 unweighted NLL 观察拟合变化；它们自己的优化损失不在同一个标度上。DFT 标量更小，不能据此说它训练得更好。这里也没有声称复现论文完整配置。</p>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered" id="cell-id=cf0f4e94">
+<div class="input">
+<div class="prompt input_prompt">In [3]:</div>
+<div class="inner_cell">
+<div class="input_area">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">experiments.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">numpy_causal_loss</span>
+<span class="c1"># 两个目标token的当前概率分别为0.2和0.8。</span>
+<span class="n">logits</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[[</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">0.8</span><span class="p">],[</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">0.8</span><span class="p">],[</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">]]]))</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]])</span>
+<span class="n">reference_results</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">objective</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'sft'</span><span class="p">,</span><span class="s1">'dft'</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">numpy_causal_loss</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">objective</span><span class="p">)</span>
+    <span class="n">reference_results</span><span class="p">[</span><span class="n">objective</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">objective</span><span class="p">,</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="mi">6</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="nb">float</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span>
+                      <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s1">'gradient'</span><span class="p">})</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'DFT/SFT梯度倍率:'</span><span class="p">,</span>
+      <span class="n">reference_results</span><span class="p">[</span><span class="s1">'dft'</span><span class="p">][</span><span class="s1">'gradient'</span><span class="p">][</span><span class="mi">0</span><span class="p">,:</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">reference_results</span><span class="p">[</span><span class="s1">'sft'</span><span class="p">][</span><span class="s1">'gradient'</span><span class="p">][</span><span class="mi">0</span><span class="p">,:</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="output_wrapper">
+<div class="output">
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>sft {'objective': 'sft', 'loss': 0.916291, 'unweighted_nll': 0.916291, 'mean_target_probability': 0.5, 'target_tokens': 2}
+dft {'objective': 'dft', 'loss': 0.250201, 'unweighted_nll': 0.916291, 'mean_target_probability': 0.5, 'target_tokens': 2}
+DFT/SFT梯度倍率: [0.2 0.8]
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered" id="cell-id=2c7f6405"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>较不确定的第一个目标 token 在 DFT 中得到较小的梯度权重。这个小数组展示了计算规则；“什么时候这种权重有益”仍需要具体任务和模型证据。</p>
+<h2 id="5.-%E6%89%A7%E8%A1%8C%E8%BE%B9%E7%95%8C%E6%B5%8B%E8%AF%95">5. 执行边界测试<a class="anchor-link" href="#5.-%E6%89%A7%E8%A1%8C%E8%BE%B9%E7%95%8C%E6%B5%8B%E8%AF%95">¶</a></h2><p>覆盖：prompt mask、EOS、一次 shift、无有效标签、错误形状、超长边界、重复样本、训练/验证重叠、固定抽样顺序、不同长度样本的 token 总数归一化，以及 DFT 停止权重梯度。</p>
+<p>如果环境没有 torch，两个真实 autograd 检查会显示 <code>skipped</code>，不会伪装成通过。GPU 集成另需在下一本 notebook 验证。</p>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered" id="cell-id=5c25770e">
+<div class="input">
+<div class="prompt input_prompt">In [4]:</div>
+<div class="inner_cell">
+<div class="input_area">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+<span class="n">suite</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">defaultTestLoader</span><span class="o">.</span><span class="n">discover</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ROOT</span><span class="o">/</span><span class="s1">'tests'</span><span class="p">),</span> <span class="n">pattern</span><span class="o">=</span><span class="s1">'test_*.py'</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TextTestRunner</span><span class="p">(</span><span class="n">verbosity</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">suite</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">wasSuccessful</span><span class="p">(),</span> <span class="s1">'自检失败，先停止训练并修复。'</span>
+<span class="nb">print</span><span class="p">({</span><span class="s1">'tests_run'</span><span class="p">:</span><span class="n">result</span><span class="o">.</span><span class="n">testsRun</span><span class="p">,</span> <span class="s1">'passed'</span><span class="p">:</span><span class="n">result</span><span class="o">.</span><span class="n">testsRun</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">skipped</span><span class="p">)</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">failures</span><span class="p">)</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">errors</span><span class="p">),</span>
+       <span class="s1">'skipped'</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">skipped</span><span class="p">),</span> <span class="s1">'failures'</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">failures</span><span class="p">),</span> <span class="s1">'errors'</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">errors</span><span class="p">)})</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="output_wrapper">
+<div class="output">
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>s</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>s</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>
+</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>----------------------------------------------------------------------
+Ran 17 tests in 0.248s
+
+OK (skipped=2)
+</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>{'tests_run': 17, 'passed': 15, 'skipped': 2, 'failures': 0, 'errors': 0}
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered" id="cell-id=4ce0928c"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="%E4%B8%8B%E4%B8%80%E6%AD%A5">下一步<a class="anchor-link" href="#%E4%B8%8B%E4%B8%80%E6%AD%A5">¶</a></h2><p>打开 <code>01_colab_sft_dft.ipynb</code>，先记录分配到的 GPU，再决定是否开启一次最多 <strong>每分支 20 个 optimizer steps</strong> 的 smoke run。首次目的是验证真实 tokenizer、CUDA、LoRA、日志与结果保存能协作；不能据此选论文题目或下“DFT 优于 SFT”的结论。</p>
+<p>官方依据：<a href="https://huggingface.co/Qwen/Qwen3-0.6B-Base">模型卡</a>、<a href="https://huggingface.co/docs/peft/v0.15.0/en/package_reference/lora">PEFT LoRA</a>、<a href="https://huggingface.co/docs/trl/en/sft_trainer">TRL 的 SFT/DFT 说明</a>。本包直接写出 loss，不依赖 TRL。</p>
+</div>
+</div>
+</div>
+</body></html>

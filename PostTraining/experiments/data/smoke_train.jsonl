@@ -1,0 +1,12 @@
+{"id": "synthetic-000", "prompt": "What is 2 + 3?", "completion": "2 + 3 = 5."}
+{"id": "synthetic-001", "prompt": "What is 4 + 5?", "completion": "4 + 5 = 9."}
+{"id": "synthetic-002", "prompt": "What is 1 + 6?", "completion": "1 + 6 = 7."}
+{"id": "synthetic-003", "prompt": "What is 3 + 8?", "completion": "3 + 8 = 11."}
+{"id": "synthetic-004", "prompt": "What is 7 + 2?", "completion": "7 + 2 = 9."}
+{"id": "synthetic-005", "prompt": "What is 8 + 4?", "completion": "8 + 4 = 12."}
+{"id": "synthetic-006", "prompt": "What is 9 + 5?", "completion": "9 + 5 = 14."}
+{"id": "synthetic-007", "prompt": "What is 6 + 6?", "completion": "6 + 6 = 12."}
+{"id": "synthetic-008", "prompt": "What is 3 + 4?", "completion": "3 + 4 = 7."}
+{"id": "synthetic-009", "prompt": "What is 7 + 7?", "completion": "7 + 7 = 14."}
+{"id": "synthetic-010", "prompt": "What is 8 + 9?", "completion": "8 + 9 = 17."}
+{"id": "synthetic-011", "prompt": "What is 5 + 5?", "completion": "5 + 5 = 10."}

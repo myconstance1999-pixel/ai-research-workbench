@@ -1,0 +1,8 @@
+# GPU集成尚未实测；这是一个明确版本的候选环境，不是已验证锁文件。
+# 保留 Colab 自带、与其 CUDA 驱动匹配的 torch（建议 >=2.6）。不要为本包替换 CUDA。
+# 只在独立 Colab runtime 中安装；可能需要重启 runtime 后重新执行 notebook。
+transformers==4.51.3
+peft==0.15.2
+accelerate==1.6.0
+huggingface_hub==0.30.2
+numpy>=1.24,<3

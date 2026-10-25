@@ -1,0 +1,44 @@
+{
+  "source_metadata_checked_on": "2026-10-15",
+  "items": [
+    {
+      "id": "DFT-2508.05629",
+      "title": "On the Generalization of SFT: A Reinforcement Learning Perspective with Reward Rectification",
+      "authors": [
+        "Yongliang Wu",
+        "Yizhou Zhou",
+        "Zhou Ziheng",
+        "Yingzhe Peng",
+        "Xinyu Ye",
+        "Xinting Hu",
+        "Wenbo Zhu",
+        "Lu Qi",
+        "Ming-Hsuan Yang",
+        "Xu Yang"
+      ],
+      "checked_version": "v3",
+      "paper_url": "https://arxiv.org/abs/2508.05629",
+      "fulltext_url": "https://arxiv.org/html/2508.05629v3",
+      "repo_url": "https://github.com/yongliang-wu/DFT",
+      "framework_url": "https://huggingface.co/docs/trl/en/sft_trainer"
+    },
+    {
+      "id": "GKD-2306.13649",
+      "title": "On-Policy Distillation of Language Models: Learning from Self-Generated Mistakes",
+      "authors": [
+        "Rishabh Agarwal",
+        "Nino Vieillard",
+        "Yongchao Zhou",
+        "Piotr Stanczyk",
+        "Sabela Ramos",
+        "Matthieu Geist",
+        "Olivier Bachem"
+      ],
+      "checked_version": "v3",
+      "paper_url": "https://arxiv.org/abs/2306.13649",
+      "fulltext_url": "https://arxiv.org/html/2306.13649v3",
+      "author_repo_url": null,
+      "framework_url": "https://huggingface.co/docs/trl/main/en/gkd_trainer"
+    }
+  ]
+}

@@ -1,0 +1,384 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>01_colab_sft_dft</title><style>body{font:16px/1.65 system-ui,sans-serif;color:#243533;background:#f3f5ef;max-width:900px;margin:32px auto;padding:0 20px}pre{overflow:auto;background:#fffefb;padding:16px;border:1px solid #d9e1d9;border-radius:8px}h1,h2{line-height:1.3}a{color:#176655}.prompt{font-size:12px;color:#5c6b66}.cell{margin-bottom:24px}table{border-collapse:collapse}td,th{padding:6px;border:1px solid #d9e1d9}</style></head><body><a href="../../../reading_hub.html">Back to workbench</a><div class="cell border-box-sizing text_cell rendered" id="cell-id=25ee4cf9"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="01-%C2%B7-Colab-%E4%B8%8A%E5%AE%8C%E6%88%90%E4%B8%80%E6%AC%A1%E7%9F%AD%E5%AE%9E%E9%AA%8C%EF%BC%8C%E5%B9%B6%E6%8A%8A%E8%AE%B0%E5%BD%95%E5%B8%A6%E5%9B%9E-Mac">01 · Colab 上完成一次短实验，并把记录带回 Mac<a class="anchor-link" href="#01-%C2%B7-Colab-%E4%B8%8A%E5%AE%8C%E6%88%90%E4%B8%80%E6%AC%A1%E7%9F%AD%E5%AE%9E%E9%AA%8C%EF%BC%8C%E5%B9%B6%E6%8A%8A%E8%AE%B0%E5%BD%95%E5%B8%A6%E5%9B%9E-Mac">¶</a></h1><p>本地电脑负责阅读、CPU 自检和结果分析；本脚本的真实训练在 <strong>Colab CUDA GPU</strong> 上运行。它是 SFT/DFT 链路检查，暂不代表选择了论文课题。</p>
+<p><strong>默认不安装、不下载模型、不训练。</strong> <code>RUN_INSTALL=False</code>、<code>RUN_TRAIN=False</code>。先使用 CPU runtime；准备实际训练时再切 GPU，结束后及时断开并删除运行时。已分配 GPU 时，仅运行 CPU 代码也可能消耗额度。</p>
+<h2 id="1.-%E4%B8%8A%E4%BC%A0%E4%B8%93%E7%94%A8%E5%8C%85">1. 上传专用包<a class="anchor-link" href="#1.-%E4%B8%8A%E4%BC%A0%E4%B8%93%E7%94%A8%E5%8C%85">¶</a></h2><p>在 Colab 左侧文件面板上传 <strong><code>PostTraining_Colab_v2.zip</code></strong>，下一格会解压为 <code>/content/PostTraining/</code>。不要只上传 ipynb，也不要上传整个 Mac 部署包。已有完整的 <code>PostTraining/</code> 则直接沿用，不覆盖文件。</p>
+<p>示例为 <code>Qwen/Qwen3-0.6B-Base</code>，固定文本前缀、不使用聊天模板。依赖版本仍是<strong>未通过实际 GPU 验收的候选组合</strong>；保留 Colab 自带 PyTorch/CUDA，不在 Mac 或 <code>.venv-zotero</code> 安装这组训练依赖。</p>
+<h2 id="2.-%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E5%AD%98">2. 时间与保存<a class="anchor-link" href="#2.-%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E5%AD%98">¶</a></h2><p>每分支最多 20 步、batch=1、梯度累计=8、max length=512。完整 pair 的训练子进程默认 <strong>20 分钟超时</strong>，包括模型下载、加载、评估和训练，不包括依赖安装。超时或手动中断会停止进程组，并在 <code>finally</code> 中保存已有日志；失败记录不会变成实验结果。</p>
+<p>每次运行使用唯一目录。每个分支完成后更新恢复 ZIP；成功或失败退出时再次归档。包内只含 LoRA adapter、tokenizer、配置、数据与源码快照、日志，不复制基础模型缓存。<strong>不支持中途续训</strong>，失败后换新 run 重跑。</p>
+<p><code>RECOVERY_DIR=None</code> 时 ZIP 仍在 Colab 临时盘，必须下载到 Mac。若你已挂载 Drive，可填入一个已存在的专用目录，恢复包会在分支完成和退出时复制过去；本 notebook 不替你登录或挂载账号。硬断连时 Python 的 <code>finally</code> 无法保证执行，最多恢复此前已复制的检查点。</p>
+<p>默认 12/4 条手写加法样本只检查链路，不能证明 DFT 更好。BF16 GPU 使用 BF16，否则明确使用 FP32；未承诺具体 GPU 的显存、速度或额度消耗。</p>
+<p>Local Mac validation on 2026-10-15: this copy was executed top-to-bottom in a real Jupyter kernel using the existing .venv-research environment. Dependency installation and training remained disabled. The two PyTorch checks were skipped because torch is absent; 15 other foundation checks passed. No model was downloaded, no GPU training ran, and no research result was produced. The original cloud notebook is preserved in the downloaded package.</p>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered" id="cell-id=e35d86bd">
+<div class="input">
+<div class="prompt input_prompt">In [1]:</div>
+<div class="inner_cell">
+<div class="input_area">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span><span class="p">,</span> <span class="n">PurePosixPath</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">zipfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stat</span>
+
+<span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s1">'/content/PostTraining'</span><span class="p">),</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">/</span><span class="s1">'PostTraining'</span><span class="p">]</span>
+<span class="n">ROOT</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">p</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">candidates</span> <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="o">/</span><span class="s1">'experiments/contracts.py'</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()),</span> <span class="kc">None</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">ROOT</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">uploaded</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="s1">'/content/PostTraining_Colab_v2.zip'</span><span class="p">),</span>
+                                <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">/</span><span class="s1">'PostTraining_Colab_v2.zip'</span><span class="p">]</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">is_file</span><span class="p">()),</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">uploaded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">destination</span> <span class="o">=</span> <span class="n">uploaded</span><span class="o">.</span><span class="n">parent</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">destination</span><span class="o">/</span><span class="s1">'PostTraining'</span>
+        <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span><span class="s1">'已有同名但不完整的目录；请检查或换新的 runtime，不覆盖原文件。'</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">uploaded</span><span class="p">)</span> <span class="k">as</span> <span class="n">archive</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">archive</span><span class="o">.</span><span class="n">infolist</span><span class="p">():</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">PurePosixPath</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span>
+                <span class="n">parts</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">parts</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">parts</span> <span class="ow">or</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">'PostTraining'</span>
+                    <span class="ow">or</span> <span class="s1">'..'</span> <span class="ow">in</span> <span class="n">parts</span> <span class="ow">or</span> <span class="nb">chr</span><span class="p">(</span><span class="mi">92</span><span class="p">)</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">filename</span>
+                    <span class="ow">or</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_ISLNK</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">external_attr</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">'ZIP条目必须安全地位于PostTraining根目录'</span><span class="p">)</span>
+            <span class="n">archive</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">destination</span><span class="p">)</span>
+        <span class="n">ROOT</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="k">if</span> <span class="p">(</span><span class="n">target</span><span class="o">/</span><span class="s1">'experiments/contracts.py'</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="k">if</span> <span class="n">ROOT</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s1">'在左侧上传PostTraining_Colab_v2.zip后重跑本格。'</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ROOT</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'已找到实验包:'</span><span class="p">,</span> <span class="n">ROOT</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">experiments.recovery</span><span class="w"> </span><span class="kn">import</span> <span class="n">unique_run_dir</span>
+<span class="n">RUN_INSTALL</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">RUN_TRAIN</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">TRAIN_JSONL</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">VAL_JSONL</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">MAX_STEPS</span> <span class="o">=</span> <span class="mi">20</span>
+<span class="n">MAX_LENGTH</span> <span class="o">=</span> <span class="mi">512</span>
+<span class="n">SEED</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="n">PAIR_TIMEOUT_SECONDS</span> <span class="o">=</span> <span class="mi">20</span> <span class="o">*</span> <span class="mi">60</span>
+<span class="c1"># 例如 Path('/content/drive/MyDrive/Recovery')；必须先自行挂载并创建目录。</span>
+<span class="n">RECOVERY_DIR</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">RUN_DIR</span> <span class="o">=</span> <span class="n">unique_run_dir</span><span class="p">(</span><span class="n">ROOT</span><span class="o">/</span><span class="s1">'runs'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">({</span><span class="s1">'RUN_INSTALL'</span><span class="p">:</span><span class="n">RUN_INSTALL</span><span class="p">,</span> <span class="s1">'RUN_TRAIN'</span><span class="p">:</span><span class="n">RUN_TRAIN</span><span class="p">,</span>
+       <span class="s1">'max_steps_per_branch'</span><span class="p">:</span><span class="n">MAX_STEPS</span><span class="p">,</span> <span class="s1">'pair_timeout_seconds'</span><span class="p">:</span><span class="n">PAIR_TIMEOUT_SECONDS</span><span class="p">,</span>
+       <span class="s1">'dataset'</span><span class="p">:</span><span class="s1">'synthetic_smoke_only'</span> <span class="k">if</span> <span class="n">TRAIN_JSONL</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s1">'local_jsonl'</span><span class="p">})</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">experiments.preflight</span><span class="w"> </span><span class="kn">import</span> <span class="n">environment_report</span>
+<span class="n">environment</span> <span class="o">=</span> <span class="n">environment_report</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">environment</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="output_wrapper">
+<div class="output">
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>已找到实验包: PostTraining
+{'RUN_INSTALL': False, 'RUN_TRAIN': False, 'max_steps_per_branch': 20, 'pair_timeout_seconds': 1200, 'dataset': 'synthetic_smoke_only'}
+{
+  "recorded_utc": "2026-10-25T20:28:46.773864+00:00",
+  "python": "3.12.13",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "working_disk_free_bytes": 112105803776,
+  "mps_built": false,
+  "mps_available": false,
+  "packages": {
+    "numpy": "2.5.4",
+    "torch": null,
+    "transformers": null,
+    "peft": null,
+    "accelerate": null,
+    "huggingface-hub": null,
+    "tokenizers": null,
+    "safetensors": null
+  },
+  "cuda_available": false,
+  "gpu": null
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered" id="cell-id=ac357639"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="3.-%E5%8F%AF%E9%80%89%E5%AE%89%E8%A3%85%EF%BC%8C%E7%84%B6%E5%90%8E%E9%80%9A%E8%BF%87-CPU-%E8%87%AA%E6%A3%80">3. 可选安装，然后通过 CPU 自检<a class="anchor-link" href="#3.-%E5%8F%AF%E9%80%89%E5%AE%89%E8%A3%85%EF%BC%8C%E7%84%B6%E5%90%8E%E9%80%9A%E8%BF%87-CPU-%E8%87%AA%E6%A3%80">¶</a></h2><p>安装只在本次独立 Colab runtime 中进行。若更改了已加载的包，请重启 runtime，关闭 <code>RUN_INSTALL</code>，从第一格重跑。安装不属于 20 分钟训练超时范围。</p>
+<p>自检不下载模型。原有检查核对 mask、shift、梯度和数据边界；恢复测试只启动短小的 Python 子进程，检查失败与超时日志能否归档，不运行训练。没有 torch 时真实 autograd 检查明确显示 skipped。</p>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered" id="cell-id=0c634cd9">
+<div class="input">
+<div class="prompt input_prompt">In [2]:</div>
+<div class="inner_cell">
+<div class="input_area">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="k">if</span> <span class="n">RUN_INSTALL</span><span class="p">:</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span><span class="s1">'-m'</span><span class="p">,</span><span class="s1">'pip'</span><span class="p">,</span><span class="s1">'install'</span><span class="p">,</span><span class="s1">'-r'</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">ROOT</span><span class="o">/</span><span class="s1">'experiments/requirements-colab.txt'</span><span class="p">)],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'跳过安装。'</span><span class="p">)</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+<span class="n">suite</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">defaultTestLoader</span><span class="o">.</span><span class="n">discover</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ROOT</span><span class="o">/</span><span class="s1">'tests'</span><span class="p">),</span> <span class="n">pattern</span><span class="o">=</span><span class="s1">'test_*.py'</span><span class="p">)</span>
+<span class="n">checks</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TextTestRunner</span><span class="p">(</span><span class="n">verbosity</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">suite</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">checks</span><span class="o">.</span><span class="n">wasSuccessful</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">({</span><span class="s1">'tests_run'</span><span class="p">:</span><span class="n">checks</span><span class="o">.</span><span class="n">testsRun</span><span class="p">,</span><span class="s1">'skipped'</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">checks</span><span class="o">.</span><span class="n">skipped</span><span class="p">)})</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="output_wrapper">
+<div class="output">
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>s</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>s</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>跳过安装。
+</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>.</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>
+</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>----------------------------------------------------------------------
+Ran 17 tests in 0.258s
+
+OK (skipped=2)
+</pre>
+</div>
+</div>
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>{'tests_run': 17, 'skipped': 2}
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered" id="cell-id=9f55caa9"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="4.-%E8%BF%90%E8%A1%8C%E6%88%96%E5%8F%AA%E7%9C%8B%E9%A2%84%E6%A3%80">4. 运行或只看预检<a class="anchor-link" href="#4.-%E8%BF%90%E8%A1%8C%E6%88%96%E5%8F%AA%E7%9C%8B%E9%A2%84%E6%A3%80">¶</a></h2><p>两分支共享解析到完整 SHA 的基础模型、tokenizer、数据、初始化和样本顺序。源码快照能随结果包回到 Mac，控制台输出保存为 <code>console.log</code>；<code>launcher.json</code> 记录超时、退出状态和总墙钟时间。</p>
+<p>比较用同一验证样本和 greedy 解码。不同优化损失不能直接比数值；只有一个 seed、极小合成数据和未调优学习率，这不是算法优劣实验。</p>
+<p>开启训练后，当前单元格会实时显示子进程日志。失败或超时会显示异常，这是保留失败证据的正常方式；恢复 ZIP 会在异常抛出前生成，不需要后续单元格成功运行。</p>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered" id="cell-id=6fb37b48">
+<div class="input">
+<div class="prompt input_prompt">In [3]:</div>
+<div class="inner_cell">
+<div class="input_area">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">command</span> <span class="o">=</span> <span class="p">[</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span><span class="s1">'-u'</span><span class="p">,</span><span class="s1">'-m'</span><span class="p">,</span><span class="s1">'experiments.run_pair'</span><span class="p">,</span><span class="s1">'--output'</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">RUN_DIR</span><span class="p">),</span>
+           <span class="s1">'--max-steps'</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">MAX_STEPS</span><span class="p">),</span><span class="s1">'--max-length'</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">MAX_LENGTH</span><span class="p">),</span><span class="s1">'--seed'</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">SEED</span><span class="p">)]</span>
+<span class="k">if</span> <span class="n">TRAIN_JSONL</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">VAL_JSONL</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">assert</span> <span class="n">TRAIN_JSONL</span> <span class="ow">and</span> <span class="n">VAL_JSONL</span><span class="p">,</span> <span class="s1">'需要同时提供训练和验证JSONL'</span>
+    <span class="n">command</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">'--train-jsonl'</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">TRAIN_JSONL</span><span class="p">),</span><span class="s1">'--val-jsonl'</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">VAL_JSONL</span><span class="p">)]</span>
+<span class="k">if</span> <span class="n">RECOVERY_DIR</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">command</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">'--recovery-dir'</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">RECOVERY_DIR</span><span class="p">)]</span>
+<span class="k">if</span> <span class="n">RUN_TRAIN</span><span class="p">:</span>
+    <span class="k">assert</span> <span class="n">checks</span><span class="o">.</span><span class="n">wasSuccessful</span><span class="p">()</span>
+    <span class="n">command</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">'--confirm-smoke-training'</span><span class="p">]</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">experiments.recovery</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_logged_process</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'开始受限联调；超时、失败和中断均尝试保留已有记录。'</span><span class="p">)</span>
+    <span class="n">launch</span> <span class="o">=</span> <span class="n">run_logged_process</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">ROOT</span><span class="p">,</span> <span class="n">run_dir</span><span class="o">=</span><span class="n">RUN_DIR</span><span class="p">,</span>
+                                <span class="n">timeout_seconds</span><span class="o">=</span><span class="n">PAIR_TIMEOUT_SECONDS</span><span class="p">,</span> <span class="n">recovery_dir</span><span class="o">=</span><span class="n">RECOVERY_DIR</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">completed</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">ROOT</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">preflight</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">completed</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">({</span><span class="n">k</span><span class="p">:</span><span class="n">preflight</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'status'</span><span class="p">,</span><span class="s1">'train_examples'</span><span class="p">,</span><span class="s1">'validation_examples'</span><span class="p">)})</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="output_wrapper">
+<div class="output">
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>{'status': 'preflight_only_no_download_no_training', 'train_examples': 12, 'validation_examples': 4}
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered" id="cell-id=0288c175"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="5.-%E6%9F%A5%E7%9C%8B%E7%BB%93%E6%9E%9C%E5%92%8C%E6%81%A2%E5%A4%8D%E5%8C%85">5. 查看结果和恢复包<a class="anchor-link" href="#5.-%E6%9F%A5%E7%9C%8B%E7%BB%93%E6%9E%9C%E5%92%8C%E6%81%A2%E5%A4%8D%E5%8C%85">¶</a></h2><p>只有两分支完成且 manifest 仍标记成功，才展示对照；失败和中断只展示运行状态。<code>training_seconds</code> 仅覆盖优化更新；<code>branch_wall_seconds</code> 包含加载与评估，<code>launcher.json</code> 的总耗时覆盖完整 pair。它们都不是 Colab 额度账单。</p>
+<p>在左侧文件面板找到 <code>runs/&lt;本次run名&gt;.zip</code> 并下载到 Mac。它包含原始数据快照，按数据本身的分享权限处理。<strong>生成归档不等于已经下载。</strong> 如上一格失败，ZIP 也已在 <code>finally</code> 中尝试生成，可以直接下载，无需重新训练。</p>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered" id="cell-id=a2f44c84">
+<div class="input">
+<div class="prompt input_prompt">In [4]:</div>
+<div class="inner_cell">
+<div class="input_area">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">comparison</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">manifest_path</span> <span class="o">=</span> <span class="n">RUN_DIR</span><span class="o">/</span><span class="s1">'manifest.json'</span>
+<span class="n">manifest</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">manifest_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span> <span class="k">if</span> <span class="n">manifest_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">RUN_TRAIN</span> <span class="ow">and</span> <span class="n">manifest</span> <span class="ow">and</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'status'</span><span class="p">)</span> <span class="o">==</span> <span class="s1">'smoke_complete_not_research_evidence'</span>
+    <span class="ow">and</span> <span class="p">(</span><span class="n">RUN_DIR</span><span class="o">/</span><span class="s1">'comparison.json'</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()):</span>
+    <span class="n">comparison</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">((</span><span class="n">RUN_DIR</span><span class="o">/</span><span class="s1">'comparison.json'</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">comparison</span><span class="p">[</span><span class="s1">'results'</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">({</span><span class="s1">'objective'</span><span class="p">:</span><span class="n">row</span><span class="p">[</span><span class="s1">'objective'</span><span class="p">],</span>
+               <span class="s1">'before_validation_nll'</span><span class="p">:</span><span class="n">row</span><span class="p">[</span><span class="s1">'before_validation'</span><span class="p">][</span><span class="s1">'unweighted_nll'</span><span class="p">],</span>
+               <span class="s1">'after_validation_nll'</span><span class="p">:</span><span class="n">row</span><span class="p">[</span><span class="s1">'after_validation'</span><span class="p">][</span><span class="s1">'unweighted_nll'</span><span class="p">],</span>
+               <span class="s1">'training_seconds'</span><span class="p">:</span><span class="n">row</span><span class="p">[</span><span class="s1">'training_seconds'</span><span class="p">],</span> <span class="s1">'branch_wall_seconds'</span><span class="p">:</span><span class="n">row</span><span class="p">[</span><span class="s1">'branch_wall_seconds'</span><span class="p">],</span>
+               <span class="s1">'peak_cuda_allocated_GiB'</span><span class="p">:</span><span class="n">row</span><span class="p">[</span><span class="s1">'peak_cuda_allocated_bytes'</span><span class="p">]</span><span class="o">/</span><span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">})</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'运行状态:'</span><span class="p">,</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'status'</span><span class="p">)</span> <span class="k">if</span> <span class="n">manifest</span> <span class="k">else</span> <span class="s1">'未运行真实训练'</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'没有完整对照，不报告模型效果。'</span><span class="p">)</span>
+<span class="n">archive</span> <span class="o">=</span> <span class="n">RUN_DIR</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">RUN_DIR</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">.zip'</span>
+<span class="k">if</span> <span class="n">archive</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'可下载恢复包:'</span><span class="p">,</span> <span class="n">archive</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">RECOVERY_DIR</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">'仍在当前运行时；请下载到Mac。'</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'没有运行恢复包；默认预检不会创建模型实验记录。'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="output_wrapper">
+<div class="output">
+<div class="output_area">
+<div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>运行状态: 未运行真实训练
+没有完整对照，不报告模型效果。
+没有运行恢复包；默认预检不会创建模型实验记录。
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered" id="cell-id=7151d165"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="%E4%B8%8B%E4%B8%80%E6%AD%A5">下一步<a class="anchor-link" href="#%E4%B8%8B%E4%B8%80%E6%AD%A5">¶</a></h2><p>回到 Mac，ZIP 可以保存在 Downloads 或 <code>workbench-v2/inbox/</code>。在 <code>the extracted repository root</code> 运行 <code>python3 tools/research_files.py import-run /实际路径/本次run.zip</code>；导入到 <code>workbench-v2/runs/</code>，不覆盖既有结果。阅读 <code>launcher.json</code>、manifest、样本剔除和生成前后输出；未成功的 pair 保留为失败记录，不参与方法比较。</p>
+<p>官方资料：<a href="https://huggingface.co/Qwen/Qwen3-0.6B-Base">Qwen 模型卡</a> · <a href="https://huggingface.co/docs/transformers/v4.51.3/en/main_classes/model">Transformers 4.51.3</a> · <a href="https://huggingface.co/docs/peft/v0.15.0/en/package_reference/lora">PEFT LoRA</a> · <a href="https://huggingface.co/docs/trl/en/sft_trainer">TRL DFT</a></p>
+</div>
+</div>
+</div>
+</body></html>
